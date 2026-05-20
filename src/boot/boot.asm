@@ -1,102 +1,67 @@
 BITS 16
-ORG 0x7C00
+org 0x7C00
 
 start:
-    cli ; Disable interrupts
+    cli ; Disable hardware interruptions
 
-    ; Clear registers
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
+    ; Save drive number passed by BIOS in DL
+    ; 0x00 = Floppy
+    ; 0x80 = First hard disk
+    mov [boot_drive], dl
 
-    mov sp, 0x7C00 ; Stack grows down from boot sector
+    xor ax, ax ; AX = 0
+    mov ds, ax ; DS = 0
+    mov es, ax ; ES = 0
+    mov ss, ax ; SS = 0
+    mov sp, 0x7C00 ; Stack pointer = 0x7C00
 
-    ; Enable A20
-    call enable_a20
+    ; Print loading message
+    mov si, loading_msg
+    call print_string
 
-    sti ; Enable interrupts
+    ; Loader (LBA read!)
+    mov ah, 0x42 ; INT 13 function 42h = Extended LBA Read
+    mov dl, [boot_drive] ; Get disk number
+    mov si, disk_packet ; SI Points to Disk Address Packet
+    int 0x13
+    jc disk_error
 
-    mov si, msg
+    ; Print success and jump message
+    mov si, jump_msg
+    call print_string
 
-.print:
-    lodsb
-    or al, al
-    jz .hang
+    jmp 0x0000:0x8000 ; Far jump to the loader
 
-    mov ah, 0x0E
-    int 0x10
-    jmp .print
-
+disk_error:
+    mov si, err_msg
+    call print_string
 .hang:
     jmp .hang
 
-enable_a20:
-; Wait input buffer empty (bit 1 = 0)
-.wait_input:
-    in al, 0x64
-    test al, 00000010b
-    jnz .wait_input
-
-    ; disable keyboard
-    mov al, 0xAD
-    out 0x64, al
-; Wait controller ready again
-.wait_input_again:
-    in al, 0x64
-    test al, 00000010b
-    jnz .wait_input_again
-
-    ; Request output port read
-    mov al, 0xD0
-    out 0x64, al
-
-.wait_output:
-    in al, 0x64
-    test al, 00000001b
-    jz .wait_output
-
-    ; Read output port
-    in al, 0x60
-
-    ; Enable A20
-    or al, 00000010b
-    mov bl, al
-
-; Wait. Safe to send write command
-.wait_input_write:
-    in al, 0x64
-    test al, 00000010b
-    jnz .wait_input_write
-
-    ; Write output port command
-    mov al, 0xD1
-    out 0x64, al
-
-; Wait. Safe to send data
-.wait_input_data:
-    in al, 0x64
-    test al, 00000010b
-    jnz .wait_input_data
-    
-    ; Write modified output port (A20 enabled)
-    mov al, bl
-    out 0x60, al
-
-; WAIT!!!!! Safe before re enabling keyboard
-.wait_input_finish:
-    in al, 0x64
-    test al, 00000010b
-    jnz .wait_input_finish
-
-    ; Re enable keyboard
-    mov al, 0xAE
-    out 0x64, al
-
+print_string:
+    mov ah, 0x0E
+.loop:
+    lodsb
+    or al, al
+    jz .done
+    int 0x10
+    jmp .loop
+.done:
     ret
 
-msg db "Welcome to cumpile!", 0
+align 4
+disk_packet:
+    db 0x10         ; Packet size (16 bytes)
+    db 0            ; Reserved
+    dw 20           ; Read 20 sectors (10240 bytes)
+    dw 0x8000       ; Buffer offset (0x8000)
+    dw 0x0000       ; Buffer segment (0x0000)
+    dq 1            ; Start LBA (Sector 2 = LBA 1)
 
-; Padding + boot signature
+boot_drive db 0
+loading_msg db "Loading loader...", 13, 10, 0
+jump_msg db "Jumping to loader...", 13, 10, 0
+err_msg db "Disk read failed!", 13, 10, 0
+
 times 510 - ($ - $$) db 0
 dw 0xAA55
