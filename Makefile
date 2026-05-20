@@ -10,6 +10,7 @@ LOADER_ASM = $(SRC)/boot/loader.asm
 
 KERNEL_SRC = $(SRC)/kernel/kernel.c
 ELF_SRC = $(SRC)/kernel/elf.c
+VGA_SRC = $(SRC)/kernel/vga.c
 DISK_ASM = $(SRC)/kernel/disk.asm
 
 BOOT_BIN = $(BUILD)/boot.bin
@@ -17,7 +18,7 @@ LOADER_BIN = $(BUILD)/loader.bin
 KERNEL_BIN = $(BUILD)/kernel.bin
 OS_IMAGE = $(BUILD)/cumpile.bin
 
-CFLAGS = -ffreestanding -O2 -Wall -Wextra -m32
+CFLAGS = -ffreestanding -O2 -Wall -Wextra -m32 -Isrc/include
 LDFLAGS = -T linker.ld -nostdlib -m elf_i386
 
 all: $(OS_IMAGE)
@@ -43,11 +44,14 @@ $(LOADER_BIN): $(BUILD)/loader.o $(BUILD)/elf.o $(BUILD)/disk.o
 	python3 -c "import os; f=open('$(LOADER_BIN)', 'ab'); f.write(b'\x00' * (10240 - os.path.getsize('$(LOADER_BIN)'))); f.close()"
 
 # KERNEL
+$(BUILD)/vga.o: $(VGA_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -c $(VGA_SRC) -o $(BUILD)/vga.o
+
 $(BUILD)/kernel.o: $(KERNEL_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -c $(KERNEL_SRC) -o $(BUILD)/kernel.o
 
-$(KERNEL_BIN): $(BUILD)/kernel.o linker.ld
-	$(LD) $(LDFLAGS) $(BUILD)/kernel.o -o $(KERNEL_BIN)
+$(KERNEL_BIN): $(BUILD)/kernel.o $(BUILD)/vga.o linker.ld
+	$(LD) $(LDFLAGS) $(BUILD)/kernel.o $(BUILD)/vga.o -o $(KERNEL_BIN)
 
 # FINAL IMAGE
 $(OS_IMAGE): $(BOOT_BIN) $(LOADER_BIN) $(KERNEL_BIN)
