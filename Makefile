@@ -10,8 +10,12 @@ LOADER_ASM = $(SRC)/boot/loader.asm
 
 KERNEL_SRC = $(SRC)/kernel/kernel.c
 ELF_SRC = $(SRC)/kernel/elf.c
-VGA_SRC = $(SRC)/kernel/vga.c
 DISK_ASM = $(SRC)/kernel/disk.asm
+
+VGA_SRC = $(SRC)/kernel/vga.c
+SYSCALL_SRC = $(SRC)/kernel/syscall.c
+IDT_SRC = $(SRC)/kernel/idt.c
+ISR_ASM = $(SRC)/kernel/isr.asm
 
 BOOT_BIN = $(BUILD)/boot.bin
 LOADER_BIN = $(BUILD)/loader.bin
@@ -47,11 +51,20 @@ $(LOADER_BIN): $(BUILD)/loader.o $(BUILD)/elf.o $(BUILD)/disk.o
 $(BUILD)/vga.o: $(VGA_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -c $(VGA_SRC) -o $(BUILD)/vga.o
 
+$(BUILD)/syscall.o: $(SYSCALL_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -c $(SYSCALL_SRC) -o $(BUILD)/syscall.o
+
+$(BUILD)/idt.o: $(IDT_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -c $(IDT_SRC) -o $(BUILD)/idt.o
+
+$(BUILD)/isr.o: $(ISR_ASM) | $(BUILD)
+	$(ASM) -f elf32 $(ISR_ASM) -o $(BUILD)/isr.o
+
 $(BUILD)/kernel.o: $(KERNEL_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -c $(KERNEL_SRC) -o $(BUILD)/kernel.o
 
-$(KERNEL_BIN): $(BUILD)/kernel.o $(BUILD)/vga.o linker.ld
-	$(LD) $(LDFLAGS) $(BUILD)/kernel.o $(BUILD)/vga.o -o $(KERNEL_BIN)
+$(KERNEL_BIN): $(BUILD)/kernel.o $(BUILD)/vga.o $(BUILD)/syscall.o $(BUILD)/isr.o $(BUILD)/idt.o linker.ld
+	$(LD) $(LDFLAGS) $(BUILD)/kernel.o $(BUILD)/vga.o $(BUILD)/isr.o $(BUILD)/idt.o $(BUILD)/syscall.o -o $(KERNEL_BIN)
 
 # FINAL IMAGE
 $(OS_IMAGE): $(BOOT_BIN) $(LOADER_BIN) $(KERNEL_BIN)
