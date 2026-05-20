@@ -23,10 +23,6 @@ void _start() {
 
     idt_init();
 
-    volatile int a = 0;
-    volatile int b = 1;
-    volatile int c = b/a;
-
     asm volatile (
         "mov $1, %%eax\n"
         "int $0x80\n"
