@@ -28,3 +28,10 @@ It depends on:
 - 🧂 snus (optional, but strongly recommended for debugging)
 - 🧠 controlled denial
 - ⌛ permanent night mode
+
+## LBA Sectors
+```
+LBA 0 -> Bootloader
+LBA 1-20 -> Loader
+LBA 21+ -> Kernel
+```
