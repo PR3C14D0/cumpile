@@ -8,23 +8,18 @@ extern void enter_user_mode();
 
 
 
-static void clear_screen() {
-    uint32_t* fb = (uint32_t*)graphics_framebuffer;
-    uint32_t total_pixels = (uint32_t)graphics_width * graphics_height;
-    
-    /* Fill entire graphical screen with premium slate color */
-    for (uint32_t i = 0; i < total_pixels; i++) {
-        fb[i] = 0x1E1E2E;
-    }
-}
-
-static void kprintf(const char* str) {
-    vga_print(str);
-}
-
 void _start() {
-    clear_screen();
-    kprintf("Welcome to cumpile! (Graphics Mode Active)\n");
+    vga_clear_screen();
+    vga_print("Welcome to cumpile! (Graphics Mode Active)\n");
+    vga_print("Width: ");
+    vga_print_dec(graphics_width);
+    vga_print(" Height: ");
+    vga_print_dec(graphics_height);
+    vga_print(" BPP: ");
+    vga_print_dec(graphics_bpp);
+    vga_print(" FB: ");
+    vga_print_hex(graphics_framebuffer);
+    vga_print("\n");
 
     gdt_init();
     idt_init();
