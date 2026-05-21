@@ -57,12 +57,19 @@ gdt_start:
     ; - Present: 1
     ; - 32 bit segment (D = 1)
     dq 0x00CF92000000FFFF
+
+    ; User code segment
+    dq 0x00CFFA000000FFFF
+
+    ; User data segment
+    dq 0x00CFF2000000FFFF
 gdt_end:
 
 gdt_descriptor:
     dw gdt_end - gdt_start - 1
     dd gdt_start
 
+; Selectors
 CODE_SEG equ 0x08
 DATA_SEG equ 0x10
 
@@ -79,8 +86,7 @@ pm_entry:
     ; Define stack pointer in high memory
     mov esp, 0x90000
 
-    call load_kernel
-
-    jmp [kernel_entry] ; Kernel entry point
+    call load_kernel 
+    jmp [kernel_entry]
 .hang:
     jmp .hang

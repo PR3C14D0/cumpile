@@ -43,7 +43,16 @@ static void set_gate(int n, uint32_t nHandler) {
     idt[n].low = nHandler & 0xFFFF;
     idt[n].sel = 0x08;
     idt[n].zero = 0;
-    idt[n].flags = 0x8E;
+    idt[n].flags = 0x8E;  // DPL=0
+    idt[n].high = nHandler >> 16;
+}
+
+// DPL=3 for userspace access
+static void set_gate_user(int n, uint32_t nHandler) {
+    idt[n].low = nHandler & 0xFFFF;
+    idt[n].sel = 0x08;
+    idt[n].zero = 0;
+    idt[n].flags = 0xEE;  // DPL=3
     idt[n].high = nHandler >> 16;
 }
 
@@ -120,7 +129,35 @@ void exception_handler(struct cpu_state* r) {
     }
 }
 
+static inline void outb(uint16_t port, uint8_t val) {
+    asm volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static void pic_init() {
+    // ICW1: init cascade
+    outb(0x20, 0x11);
+    outb(0xA0, 0x11);
+
+    // ICW2: remap IRQs (avoid exception collision)
+    outb(0x21, 0x20); // Master IRQ 0-7 -> 0x20-0x27
+    outb(0xA1, 0x28); // Slave IRQ 8-15 -> 0x28-0x2F
+
+    // ICW3: cascade setup
+    outb(0x21, 0x04);
+    outb(0xA1, 0x02);
+
+    // ICW4: x86 mode
+    outb(0x21, 0x01);
+    outb(0xA1, 0x01);
+
+    // Mask all hardware interrupts
+    outb(0x21, 0xFF);
+    outb(0xA1, 0xFF);
+}
+
 void idt_init() {
+    pic_init(); // init PIC first
+
     pIdt.limit = sizeof(idt) - 1;
     pIdt.base = (uint32_t)&idt;
 
@@ -157,7 +194,7 @@ void idt_init() {
     set_gate(30, (uint32_t)isr_30);
     set_gate(31, (uint32_t)isr_31);
 
-    set_gate(0x80, (uint32_t)isr_0x80);
+    set_gate_user(0x80, (uint32_t)isr_0x80);  // syscall
 
     asm volatile("lidt %0" : : "m"(pIdt));
 }
