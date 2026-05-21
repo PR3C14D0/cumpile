@@ -1,37 +1,72 @@
 #include "vga.h"
+#include "font.h"
 #include <stdint.h>
 
-#define VGA_WIDTH 80
-#define VGA_HEIGHT 25
-#define VGA_SIZE (VGA_WIDTH * VGA_HEIGHT)
-#define VGA_ATTRIB 0x0F
 
-static uint16_t* const pcVGA = (uint16_t*)0xB8000;
-static uint32_t nCursor = 0;
 
-static void vga_scroll() {
-    for (uint32_t i = 0; i < VGA_WIDTH * (VGA_HEIGHT - 1); i++) {
-        pcVGA[i] = pcVGA[i + VGA_WIDTH];
+/* Text cursor position in columns/rows */
+static uint32_t cursor_x = 0;
+static uint32_t cursor_y = 0;
+
+/* Premium slate color palette */
+#define BG_COLOR 0x1E1E2E
+#define FG_COLOR 0xF4F4F4
+
+static void graphics_scroll() {
+    uint32_t* fb = (uint32_t*)graphics_framebuffer;
+    uint32_t row_pixels = (uint32_t)graphics_width * 8; // 8 scanlines
+    uint32_t total_pixels = (uint32_t)graphics_width * graphics_height;
+    
+    /* Shift screen pixels up by 8 vertical scanlines */
+    for (uint32_t i = 0; i < total_pixels - row_pixels; i++) {
+        fb[i] = fb[i + row_pixels];
     }
-    for (uint32_t i = VGA_WIDTH * (VGA_HEIGHT - 1); i < VGA_SIZE; i++) {
-        pcVGA[i] = (VGA_ATTRIB << 8) | ' ';
+    
+    /* Clear the new bottom line with background color */
+    for (uint32_t i = total_pixels - row_pixels; i < total_pixels; i++) {
+        fb[i] = BG_COLOR;
     }
-    nCursor = VGA_WIDTH * (VGA_HEIGHT - 1);
+    
+    cursor_y = (graphics_height / 8) - 1;
+}
+
+static void draw_char(uint32_t cx, uint32_t cy, char c, uint32_t fg, uint32_t bg) {
+    uint32_t* fb = (uint32_t*)graphics_framebuffer;
+    uint32_t pixel_x = cx * 8;
+    uint32_t pixel_y = cy * 8;
+    
+    for (uint32_t row = 0; row < 8; row++) {
+        uint8_t bits = font_8x8[(unsigned char)c][row];
+        for (uint32_t col = 0; col < 8; col++) {
+            uint32_t color = (bits & (0x80 >> col)) ? fg : bg;
+            fb[(pixel_y + row) * graphics_width + (pixel_x + col)] = color;
+        }
+    }
 }
 
 void vga_putc(char c) {
+    uint32_t cols = graphics_width / 8;
+    uint32_t rows = graphics_height / 8;
+    
     if (c == '\n') {
-        nCursor = (nCursor / VGA_WIDTH + 1) * VGA_WIDTH;
+        cursor_x = 0;
+        cursor_y++;
     } else if (c == '\r') {
-        nCursor = (nCursor / VGA_WIDTH) * VGA_WIDTH;
+        cursor_x = 0;
     } else if (c == '\t') {
-        nCursor = (nCursor + 8) & ~7;
+        cursor_x = (cursor_x + 8) & ~7;
     } else {
-        pcVGA[nCursor++] = (VGA_ATTRIB << 8) | c;
+        draw_char(cursor_x, cursor_y, c, FG_COLOR, BG_COLOR);
+        cursor_x++;
     }
-
-    if (nCursor >= VGA_SIZE) {
-        vga_scroll();
+    
+    if (cursor_x >= cols) {
+        cursor_x = 0;
+        cursor_y++;
+    }
+    
+    if (cursor_y >= rows) {
+        graphics_scroll();
     }
 }
 

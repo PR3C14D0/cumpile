@@ -20,6 +20,7 @@ $(BUILD)/idt.o \
 $(BUILD)/isr.o \
 $(BUILD)/gdt.o \
 $(BUILD)/gdtc.o \
+$(BUILD)/font.o \
 $(BUILD)/libuser.o \
 $(BUILD)/main.o \
 $(BUILD)/usermode.o \
