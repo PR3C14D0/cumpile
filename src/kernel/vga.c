@@ -12,26 +12,86 @@ static uint32_t cursor_y = 0;
 #define BG_COLOR 0x1E1E2E
 #define FG_COLOR 0xF4F4F4
 
+static inline void put_pixel(uint32_t x, uint32_t y, uint32_t color) {
+    if (x >= graphics_width || y >= graphics_height) return;
+    
+    uint8_t* fb = (uint8_t*)graphics_framebuffer;
+    uint32_t offset = y * graphics_pitch + x * (graphics_bpp / 8);
+    
+    if (graphics_bpp == 32) {
+        *(uint32_t*)(fb + offset) = color;
+    } else if (graphics_bpp == 24) {
+        fb[offset]     = color & 0xFF;        // Blue
+        fb[offset + 1] = (color >> 8) & 0xFF;  // Green
+        fb[offset + 2] = (color >> 16) & 0xFF; // Red
+    } else if (graphics_bpp == 16) {
+        uint8_t r = (color >> 16) & 0xFF;
+        uint8_t g = (color >> 8) & 0xFF;
+        uint8_t b = color & 0xFF;
+        uint16_t color16 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+        *(uint16_t*)(fb + offset) = color16;
+    }
+}
+
+void vga_clear_screen(void) {
+    uint8_t* fb = (uint8_t*)graphics_framebuffer;
+    uint32_t bytes_per_pixel = graphics_bpp / 8;
+    
+    for (uint32_t y = 0; y < graphics_height; y++) {
+        for (uint32_t x = 0; x < graphics_width; x++) {
+            uint32_t offset = y * graphics_pitch + x * bytes_per_pixel;
+            if (graphics_bpp == 32) {
+                *(uint32_t*)(fb + offset) = BG_COLOR;
+            } else if (graphics_bpp == 24) {
+                fb[offset]     = BG_COLOR & 0xFF;
+                fb[offset + 1] = (BG_COLOR >> 8) & 0xFF;
+                fb[offset + 2] = (BG_COLOR >> 16) & 0xFF;
+            } else if (graphics_bpp == 16) {
+                uint8_t r = (BG_COLOR >> 16) & 0xFF;
+                uint8_t g = (BG_COLOR >> 8) & 0xFF;
+                uint8_t b = BG_COLOR & 0xFF;
+                uint16_t color16 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+                *(uint16_t*)(fb + offset) = color16;
+            }
+        }
+    }
+}
+
 static void graphics_scroll() {
-    uint32_t* fb = (uint32_t*)graphics_framebuffer;
-    uint32_t row_pixels = (uint32_t)graphics_width * 8; // 8 scanlines
-    uint32_t total_pixels = (uint32_t)graphics_width * graphics_height;
+    uint8_t* fb = (uint8_t*)graphics_framebuffer;
+    uint32_t shift_bytes = (uint32_t)graphics_pitch * 8; // 8 scanlines
+    uint32_t total_bytes = (uint32_t)graphics_pitch * graphics_height;
     
     /* Shift screen pixels up by 8 vertical scanlines */
-    for (uint32_t i = 0; i < total_pixels - row_pixels; i++) {
-        fb[i] = fb[i + row_pixels];
+    for (uint32_t i = 0; i < total_bytes - shift_bytes; i++) {
+        fb[i] = fb[i + shift_bytes];
     }
     
     /* Clear the new bottom line with background color */
-    for (uint32_t i = total_pixels - row_pixels; i < total_pixels; i++) {
-        fb[i] = BG_COLOR;
+    uint32_t bytes_per_pixel = graphics_bpp / 8;
+    for (uint32_t y = graphics_height - 8; y < graphics_height; y++) {
+        for (uint32_t x = 0; x < graphics_width; x++) {
+            uint32_t offset = y * graphics_pitch + x * bytes_per_pixel;
+            if (graphics_bpp == 32) {
+                *(uint32_t*)(fb + offset) = BG_COLOR;
+            } else if (graphics_bpp == 24) {
+                fb[offset]     = BG_COLOR & 0xFF;
+                fb[offset + 1] = (BG_COLOR >> 8) & 0xFF;
+                fb[offset + 2] = (BG_COLOR >> 16) & 0xFF;
+            } else if (graphics_bpp == 16) {
+                uint8_t r = (BG_COLOR >> 16) & 0xFF;
+                uint8_t g = (BG_COLOR >> 8) & 0xFF;
+                uint8_t b = BG_COLOR & 0xFF;
+                uint16_t color16 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+                *(uint16_t*)(fb + offset) = color16;
+            }
+        }
     }
     
     cursor_y = (graphics_height / 8) - 1;
 }
 
 static void draw_char(uint32_t cx, uint32_t cy, char c, uint32_t fg, uint32_t bg) {
-    uint32_t* fb = (uint32_t*)graphics_framebuffer;
     uint32_t pixel_x = cx * 8;
     uint32_t pixel_y = cy * 8;
     
@@ -39,7 +99,7 @@ static void draw_char(uint32_t cx, uint32_t cy, char c, uint32_t fg, uint32_t bg
         uint8_t bits = font_8x8[(unsigned char)c][row];
         for (uint32_t col = 0; col < 8; col++) {
             uint32_t color = (bits & (0x80 >> col)) ? fg : bg;
-            fb[(pixel_y + row) * graphics_width + (pixel_x + col)] = color;
+            put_pixel(pixel_x + col, pixel_y + row, color);
         }
     }
 }

@@ -34,6 +34,9 @@ start:
     mov al, [0x9000 + 25]  ; Bits per pixel (depth)
     mov [0x6008], al
 
+    mov ax, [0x9000 + 16]  ; Bytes per scanline (pitch)
+    mov [0x6009], ax
+
     ; Set VBE Mode 1024x768x32 with Linear Frame Buffer (LFB) bit set (bx = 0x118 | 0x4000 = 0x4118)
     mov ax, 0x4F02
     mov bx, 0x4118
