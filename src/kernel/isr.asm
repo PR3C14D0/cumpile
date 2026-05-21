@@ -78,11 +78,17 @@ isr_common_stub:
 
 extern syscall_handler
 ; System call entry (int 0x80)
+; Stack on entry (from ring 3 iret frame): eip, cs, eflags, esp, ss
 isr_0x80:
-    pusha           ; Save registers
-    push ebx        ; 2nd argument
-    push eax        ; 1st argument
+    pusha               ; Save all GP regs: edi esi ebp esp ebx edx ecx eax
+    ; After pusha, esp points to saved regs. pusha layout (top to bottom):
+    ;   [esp+0]=edi [esp+4]=esi [esp+8]=ebp [esp+12]=esp_saved
+    ;   [esp+16]=ebx [esp+20]=edx [esp+24]=ecx [esp+28]=eax
+    mov eax, [esp + 28] ; restore actual eax (syscall number)
+    mov ebx, [esp + 16] ; restore actual ebx (argument)
+    push ebx            ; arg1: string ptr
+    push eax            ; arg0: syscall number
     call syscall_handler
-    add esp, 8      ; Clean up arguments
-    popa            ; Restore registers
-    iret            ; Return
+    add esp, 8          ; clean args
+    popa                ; restore all regs
+    iret                ; return to userspace

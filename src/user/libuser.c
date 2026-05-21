@@ -146,7 +146,8 @@ int printf(const char* format, ...) {
     }
     
     va_end(args);
-    buf[buf_idx] = '\0';
+    /* volatile prevents -O2 from eliminating the null terminator write */
+    ((volatile char*)buf)[buf_idx] = '\0';
     sys_print(buf);
     return buf_idx;
 }
