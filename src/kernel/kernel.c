@@ -1,9 +1,13 @@
 #include <stdint.h>
 #include "vga.h"
 #include "idt.h"
+#include "gdtc.h"
+#include "tss.h"
 
 #define VGA_MEMORY ((uint16_t*)0xB8000)
 #define VGA_WIDTH 80
+
+extern void enter_user_mode();
 
 static void clear_screen() {
     uint16_t* pVga = VGA_MEMORY;
@@ -16,20 +20,15 @@ static void kprintf(const char* str) {
     vga_print(str);
 }
 
-const char* hello = "Hello from syscall!\n";
 void _start() {
     clear_screen();
     kprintf("Welcome to cumpile!\n");
 
+    gdt_init();
     idt_init();
+    tss_init();
 
-    asm volatile (
-        "mov $1, %%eax\n"
-        "int $0x80\n"
-        :
-        : "b"(hello)
-        : "eax"
-    );
+    enter_user_mode();
 
     while(1) {
         __asm__ volatile("hlt");
