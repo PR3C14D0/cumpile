@@ -14,6 +14,6 @@ void user_main() {
     printf("Unsigned test: %u, Percent: %%\n", 1234567890);
 
     while (1) {
-        asm volatile("pause"); // pause is safe in ring 3
+        gpu_flip();
     }
 }

@@ -11,6 +11,16 @@ void sys_print(char* s) {
     );
 }
 
+void gpu_flip(void) {
+    asm volatile(
+            "mov $1, %%eax\n"
+            "int $0x81\n"
+            :
+            :
+            : "eax"
+        );
+}
+
 static void utoa(uint32_t val, char* buf) {
     char tmp[12];
     int i = 0;

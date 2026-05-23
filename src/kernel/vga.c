@@ -2,7 +2,7 @@
 #include "font.h"
 #include <stdint.h>
 
-
+#define BACK_BUFFER ((uint8_t*)0x4000000)
 
 /* Text cursor position in columns/rows */
 static uint32_t cursor_x = 0;
@@ -15,7 +15,7 @@ static uint32_t cursor_y = 0;
 static inline void put_pixel(uint32_t x, uint32_t y, uint32_t color) {
     if (x >= graphics_width || y >= graphics_height) return;
     
-    uint8_t* fb = (uint8_t*)graphics_framebuffer;
+    uint8_t* fb = BACK_BUFFER;
     uint32_t offset = y * graphics_pitch + x * (graphics_bpp / 8);
     
     if (graphics_bpp == 32) {
@@ -33,8 +33,18 @@ static inline void put_pixel(uint32_t x, uint32_t y, uint32_t color) {
     }
 }
 
+void vga_flip(void) {
+    uint8_t* src = BACK_BUFFER;
+    uint8_t* dst = (uint8_t*)graphics_framebuffer;
+    uint32_t size = graphics_pitch * graphics_height;
+
+    for(uint32_t i = 0; i < size; i++) {
+        dst[i] = src[i];
+    }
+}
+
 void vga_clear_screen(void) {
-    uint8_t* fb = (uint8_t*)graphics_framebuffer;
+    uint8_t* fb = BACK_BUFFER;
     uint32_t bytes_per_pixel = graphics_bpp / 8;
     
     for (uint32_t y = 0; y < graphics_height; y++) {
@@ -58,7 +68,7 @@ void vga_clear_screen(void) {
 }
 
 static void graphics_scroll() {
-    uint8_t* fb = (uint8_t*)graphics_framebuffer;
+    uint8_t* fb = BACK_BUFFER;
     uint32_t shift_bytes = (uint32_t)graphics_pitch * 8; // 8 scanlines
     uint32_t total_bytes = (uint32_t)graphics_pitch * graphics_height;
     

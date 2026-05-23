@@ -3,3 +3,4 @@
 
 void syscall_init();
 void syscall_handler(uint32_t eax, uint32_t ebx);
+void gpucall_handler(uint32_t eax, uint32_t ebx);
