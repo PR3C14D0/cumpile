@@ -1,5 +1,6 @@
 BITS 32
 global isr_0x80
+global isr_0x81
 
 ; Macro for exceptions that do not push an error code
 %macro ISR_NOERRCODE 1
@@ -92,3 +93,15 @@ isr_0x80:
     add esp, 8          ; clean args
     popa                ; restore all regs
     iret                ; return to userspace
+
+extern gpucall_handler
+isr_0x81:
+    pusha
+    mov eax, [esp + 28]
+    mov ebx, [esp + 16]
+    push ebx
+    push eax
+    call gpucall_handler
+    add esp, 8
+    popa 
+    iret

@@ -35,6 +35,7 @@ extern void isr_30();
 extern void isr_31();
 
 extern void isr_0x80();
+extern void isr_0x81();
 
 struct idt_entry idt[256];
 struct idt_ptr pIdt;
@@ -195,6 +196,7 @@ void idt_init() {
     set_gate(31, (uint32_t)isr_31);
 
     set_gate_user(0x80, (uint32_t)isr_0x80);  // syscall
+    set_gate_user(0x81, (uint32_t)isr_0x81); // gpucall
 
     asm volatile("lidt %0" : : "m"(pIdt));
 }
