@@ -13,9 +13,9 @@ start:
     mov ss, ax
     mov sp, 0x7C00 ; Stack grows down from boot sector
 
-    ; Get VBE Mode Info for 1024x768x32 (mode 0x118)
+    ; Get VBE Mode Info for 1600x1200x32 (mode 0x143)
     mov ax, 0x4F01
-    mov cx, 0x118
+    mov cx, 0x143
     mov di, 0x9000      ; Store Mode Info block at 0x9000
     int 0x10
     cmp ax, 0x004F
@@ -37,9 +37,9 @@ start:
     mov ax, [0x9000 + 16]  ; Bytes per scanline (pitch)
     mov [0x6009], ax
 
-    ; Set VBE Mode 1024x768x32 with Linear Frame Buffer (LFB) bit set (bx = 0x118 | 0x4000 = 0x4118)
+    ; Set VBE Mode 1600x1200x32 with Linear Frame Buffer (LFB) bit set (bx = 0x143 | 0x4000 = 0x4143)
     mov ax, 0x4F02
-    mov bx, 0x4118
+    mov bx, 0x4143
     int 0x10
     cmp ax, 0x004F
     jne .no_vbe
